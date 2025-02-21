@@ -12,6 +12,7 @@ use camera_intrinsic_model::*;
 use log::debug;
 use nalgebra as na;
 use rand::seq::SliceRandom;
+#[cfg(feature = "rerun")]
 use rerun::RecordingStream;
 use tiny_solver::loss_functions::HuberLoss;
 use tiny_solver::Optimizer;
@@ -455,6 +456,7 @@ pub fn calib_camera(
     Some((calibrated_camera, rtvec_vec))
 }
 
+#[cfg(feature = "rerun")]
 pub fn na_isometry3_to_rerun_transform3d(transform: &na::Isometry3<f64>) -> rerun::Transform3D {
     let t = (
         transform.translation.x as f32,
@@ -677,7 +679,7 @@ pub fn validation(
     final_result: &GenericModel<f64>,
     rtvec_list: &HashMap<usize, RvecTvec>,
     detected_feature_frames: &[Option<FrameFeature>],
-    recording_option: Option<&rerun::RecordingStream>,
+    #[cfg(feature = "rerun")] recording_option: Option<&rerun::RecordingStream>,
 ) -> (f64, f64) {
     let time_reprojection_errors_p2ds: Vec<_> = rtvec_list
         .iter()
@@ -698,6 +700,7 @@ pub fn validation(
                     ((dx * dx + dy * dy).sqrt(), (feature.p2d.x, feature.p2d.y))
                 })
                 .unzip();
+            #[cfg(feature = "rerun")]
             if let Some(recording) = recording_option {
                 let p3p_rerun: Vec<_> = f
                     .features
@@ -744,6 +747,7 @@ pub fn validation(
         .map(|p| *p / len_99_percent as f64)
         .sum::<f64>();
     println!("Avg reprojection error of 99%: {} px", avg_99_percent);
+    #[cfg(feature = "rerun")]
     if let Some(recording) = recording_option {
         let topic = format!("/cam{}/rep_err", cam_idx);
         let color_gradient = colorous::ORANGE_RED;
@@ -777,7 +781,7 @@ pub fn init_and_calibrate_one_camera(
     cam_idx: usize,
     cams_detected_feature_frames: &[Vec<Option<FrameFeature>>],
     target_model: &GenericModel<f64>,
-    recording: &RecordingStream,
+    #[cfg(feature = "rerun")] recording: &RecordingStream,
     calib_params: &CalibParams,
     // fixed_focal: Option<f64>,
     // disabled_distortion_num: usize,
@@ -841,6 +845,7 @@ pub fn init_and_calibrate_one_camera(
     );
     if calib_result.is_some() {
         let key_frames = [Some(frame_feature0.clone()), Some(frame_feature1.clone())];
+        #[cfg(feature = "rerun")]
         key_frames.iter().enumerate().for_each(|(i, k)| {
             let topic = format!("/cam{}/keyframe{}", cam_idx, i);
             recording.set_time_nanos("stable", k.clone().unwrap().time_ns);

@@ -11,11 +11,11 @@ use camera_intrinsic_calibration::types::{CalibParams, Extrinsics, RvecTvec, ToR
 use camera_intrinsic_calibration::util::*;
 use camera_intrinsic_calibration::visualization::*;
 use camera_intrinsic_model::*;
+use chrono::{DateTime, Datelike, NaiveDateTime, Timelike, Utc};
 use clap::{Parser, ValueEnum};
 use log::trace;
 use std::collections::HashMap;
-use std::time::Instant;
-use time::OffsetDateTime;
+use std::time::{Instant, SystemTime};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum DatasetFormat {
@@ -85,7 +85,7 @@ fn main() {
     let output_folder = if let Some(output_folder) = cli.output_folder {
         output_folder
     } else {
-        let now = OffsetDateTime::now_local().unwrap();
+        let now = Utc::now();
         format!(
             "results/{}{:02}{:02}_{:02}_{:02}_{:02}",
             now.year(),
@@ -98,9 +98,11 @@ fn main() {
     };
     std::fs::create_dir_all(&output_folder).expect("Valid path");
 
+    #[cfg(feature = "rerun")]
     let recording = rerun::RecordingStreamBuilder::new("calibration")
         .save(format!("{}/logging.rrd", output_folder))
         .unwrap();
+    #[cfg(feature = "rerun")]
     recording
         .log_static("/", &rerun::ViewCoordinates::RDF)
         .unwrap();
@@ -115,6 +117,7 @@ fn main() {
             cli.start_idx,
             cli.step,
             cli.cam_num,
+            #[cfg(feature = "rerun")]
             Some(&recording),
         ),
         DatasetFormat::General => load_others(
@@ -124,6 +127,7 @@ fn main() {
             cli.start_idx,
             cli.step,
             cli.cam_num,
+            #[cfg(feature = "rerun")]
             Some(&recording),
         ),
     };
@@ -142,6 +146,7 @@ fn main() {
         .enumerate()
         .map(|(cam_idx, feature_frames)| {
             let topic = format!("/cam{}", cam_idx);
+            #[cfg(feature = "rerun")]
             log_feature_frames(&recording, &topic, feature_frames);
             let mut calibrated_result: Option<(GenericModel<f64>, HashMap<usize, RvecTvec>)> = None;
             let max_trials = 3;
@@ -156,6 +161,7 @@ fn main() {
                     cam_idx,
                     &cams_detected_feature_frames,
                     &cli.model,
+                    #[cfg(feature = "rerun")]
                     &recording,
                     &calib_params,
                     trial > 0,
@@ -199,6 +205,7 @@ fn main() {
                     )
                 })
                 .collect();
+            #[cfg(feature = "rerun")]
             recording
                 .log_static(
                     format!("/cam{}", cam_idx),
@@ -210,6 +217,7 @@ fn main() {
                 intrinsic,
                 &new_rtvec_map,
                 &cams_detected_feature_frames[cam_idx],
+                #[cfg(feature = "rerun")]
                 Some(&recording),
             );
             rep_rms.push(rep);
@@ -235,6 +243,7 @@ fn main() {
                 intrinsic,
                 &rtvec_map,
                 &cams_detected_feature_frames[cam_idx],
+                #[cfg(feature = "rerun")]
                 Some(&recording),
             );
             rep_rms.push(rep);

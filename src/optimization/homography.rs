@@ -86,9 +86,7 @@ fn h6_l1l2_solver(six_pt_pairs: &[(glam::Vec2, glam::Vec2)]) -> Option<(f32, na:
                 *eq10a.get_mut_unchecked(row, 0) = -x * x_p;
                 *eq10a.get_mut_unchecked(row, 1) = -x_p * y;
                 *eq10a.get_mut_unchecked(row, 2) = -l * x * x * x_p - l * x_p * y * y - x_p;
-                *eq10a.get_mut_unchecked(
-                    row,
-                    3) =
+                *eq10a.get_mut_unchecked(row, 3) =
                     l * x * x * x_p * x_p * temp_h[which_gamma][(0, 2)]
                         + l * x * x * y_p * y_p * temp_h[which_gamma][(0, 2)]
                         + l * x_p * x_p * y * y * temp_h[which_gamma][(0, 2)]
@@ -98,22 +96,19 @@ fn h6_l1l2_solver(six_pt_pairs: &[(glam::Vec2, glam::Vec2)]) -> Option<(f32, na:
                         + x_p * x_p * y * temp_h[which_gamma][(0, 1)]
                         + x_p * x_p * temp_h[which_gamma][(0, 2)]
                         + y * y_p * y_p * temp_h[which_gamma][(0, 1)]
-                        + y_p * y_p * temp_h[which_gamma][(0, 2)]
-                ;
+                        + y_p * y_p * temp_h[which_gamma][(0, 2)];
 
-                *eq10b.get_mut_unchecked(
-                    row,
-                    0) =
-                    -l * x * x * temp_h[which_gamma][(0, 2)]
-                        - l * y * y * temp_h[which_gamma][(0, 2)]
-                        - x * temp_h[which_gamma][(0, 0)]
-                        - y * temp_h[which_gamma][(0, 1)]
-                        - temp_h[which_gamma][(0, 2)]
-                ;
+                *eq10b.get_mut_unchecked(row, 0) = -l * x * x * temp_h[which_gamma][(0, 2)]
+                    - l * y * y * temp_h[which_gamma][(0, 2)]
+                    - x * temp_h[which_gamma][(0, 0)]
+                    - y * temp_h[which_gamma][(0, 1)]
+                    - temp_h[which_gamma][(0, 2)];
             }
         }
         // std::cout << "svd\n";
-        let eq10x = eq10a.qr().solve_lstsq_in_place_with_conj(Conj::No, eq10b.as_mut());
+        let eq10x = eq10a
+            .qr()
+            .solve_lstsq_in_place_with_conj(Conj::No, eq10b.as_mut());
         // Eigen::JacobiSVD<Eigen::Matrix<float, 6, 4>> svd(
         //     eq10A, Eigen::ComputeFullU | Eigen::ComputeFullV);
         // Eigen::Matrix<float, 4, 1> eq10x = svd.solve(eq10b);

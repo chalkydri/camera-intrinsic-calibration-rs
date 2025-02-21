@@ -1,11 +1,13 @@
 use image::DynamicImage;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
+#[cfg(feature = "rerun")]
 use rerun::RecordingStream;
 use std::io::Cursor;
 
 use crate::detected_points::FrameFeature;
 
+#[cfg(feature = "rerun")]
 pub fn log_image_as_compressed(
     recording: &RecordingStream,
     topic: &str,
@@ -19,10 +21,7 @@ pub fn log_image_as_compressed(
         .unwrap();
 
     recording
-        .log(
-            format!("{}/image", topic),
-            &rerun::EncodedImage::new(bytes),
-        )
+        .log(format!("{}/image", topic), &rerun::EncodedImage::new(bytes))
         .unwrap();
 }
 
@@ -42,6 +41,7 @@ pub fn rerun_shift(p2ds: &[(f32, f32)]) -> Vec<(f32, f32)> {
     p2ds.iter().map(|(x, y)| (*x + 0.5, *y + 0.5)).collect()
 }
 
+#[cfg(feature = "rerun")]
 pub fn log_feature_frames(
     recording: &RecordingStream,
     topic: &str,
