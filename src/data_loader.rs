@@ -26,7 +26,7 @@ fn path_to_timestamp(path: &Path) -> i64 {
     time_ns
 }
 
-fn image_to_option_feature_frame(
+pub fn image_to_option_feature_frame(
     tag_detector: &TagDetector,
     img: &DynamicImage,
     board: &Board,
