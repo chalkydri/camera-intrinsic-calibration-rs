@@ -6,7 +6,7 @@ pub fn init_pose(frame_feature: &FrameFeature, lambda: f32) -> ((f64, f64, f64),
     let half_w = frame_feature.img_w_h.0 as f32 / 2.0;
     let half_h = frame_feature.img_w_h.1 as f32 / 2.0;
     let half_img_size = half_h.max(half_w);
-    let cxcy = glam::Vec2::new(half_w, half_h);
+    let cxcy = glam::f32::vec2(half_w, half_h);
     let (p2ds_z, p3ds): (Vec<_>, Vec<_>) = frame_feature
         .features
         .iter()
@@ -17,5 +17,5 @@ pub fn init_pose(frame_feature: &FrameFeature, lambda: f32) -> ((f64, f64, f64),
         })
         .unzip();
 
-    sqpnp_solve_glam(&p3ds, &p2ds_z).unwrap()
+    sqpnp_solve_glam(p3ds.as_slice(), p2ds_z.as_slice()).unwrap()
 }

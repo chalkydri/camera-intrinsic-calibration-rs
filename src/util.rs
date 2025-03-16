@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use crate::detected_points::{FeaturePoint, FrameFeature};
 use crate::optimization::{homography_to_focal, init_pose, radial_distortion_homography};
 use crate::types::{CalibParams, Intrinsics, RvecTvec, ToRvecTvec};
+#[cfg(feature = "rerun")]
 use crate::visualization::rerun_shift;
 
 use super::optimization::factors::*;
@@ -400,7 +401,7 @@ pub fn calib_camera(
                 .unzip();
             valid_indexes.push(i);
             let (rvec, tvec) =
-                rtvec_to_na_dvec(sqpnp_simple::sqpnp_solve_glam(&p3ds, &p2ds_z).unwrap());
+                rtvec_to_na_dvec(sqpnp_simple::sqpnp_solve_glam(p3ds.as_slice(), p2ds_z.as_slice()).unwrap());
 
             initial_values.entry(rvec_name).or_insert(rvec);
             initial_values.entry(tvec_name).or_insert(tvec);
