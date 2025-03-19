@@ -323,9 +323,8 @@ pub fn init_ucm(
     // optimize
     init_focal_alpha_problem.set_variable_bounds("params", 0, init_f / 3.0, init_f * 3.0);
     init_focal_alpha_problem.set_variable_bounds("params", 1, 1e-6, 1.0);
-    if let Some(mut second_round_values) =
-        optimizer.optimize(&init_focal_alpha_problem, &initial_values, None)
-    {
+    match optimizer.optimize(&init_focal_alpha_problem, &initial_values, None)
+    { Some(mut second_round_values) => {
         println!(
             "params after {:?}\n",
             second_round_values.get("params").unwrap()
@@ -351,9 +350,9 @@ pub fn init_ucm(
             .unwrap()
             .0,
         )
-    } else {
+    } _ => {
         None
-    }
+    }}
 }
 
 pub fn calib_camera(
