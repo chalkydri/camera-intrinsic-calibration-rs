@@ -4,7 +4,7 @@ use std::path::Path;
 use crate::board::{self, Board};
 use crate::detected_points::{FeaturePoint, FrameFeature};
 #[cfg(feature = "rerun")]
-use crate::visualization::log_image_as_compressed;
+use crate::visualization::log_image;
 use aprilgrid::detector::TagDetector;
 use glam::Vec2;
 use glob::glob;
@@ -12,6 +12,8 @@ use image::{DynamicImage, ImageReader};
 #[cfg(feature = "pretty")]
 use indicatif::ParallelProgressIterator;
 use rayon::prelude::*;
+#[cfg(feature = "rerun")]
+use rerun::TimeCell;
 
 const MIN_CORNERS: usize = 24;
 
@@ -94,25 +96,21 @@ pub fn load_euroc(
             let new_paths: Vec<_> = sorted_path.iter().skip(start_idx).step_by(step).collect();
 
             let mut time_frame: Vec<_> = {
-                #[cfg(feature = "pretty")]
-                {
                     new_paths
                         .iter()
                         .par_bridge()
-                        .progress_count(new_paths.len() as u64)
+                        //.progress_count(new_paths.len() as u64)
                         .map(|path| {
                             let time_ns = path_to_timestamp(path);
                             let img = ImageReader::open(path).unwrap().decode().unwrap();
                             #[cfg(feature = "rerun")]
                             if let Some(recording) = recording_option {
-                                recording.set_time_nanos("stable", time_ns);
-                                let topic = format!("/cam{}", cam_idx);
-                                log_image_as_compressed(
-                                    recording,
-                                    &topic,
-                                    &img,
-                                    image::ImageFormat::Jpeg,
+                                recording.set_time(
+                                    "stable",
+                                    TimeCell::from_timestamp_nanos_since_epoch(time_ns),
                                 );
+                                let topic = format!("cam{}", cam_idx);
+                                log_image(recording, &topic, &img);
                             };
                             (
                                 time_ns,
@@ -126,40 +124,6 @@ pub fn load_euroc(
                             )
                         })
                         .collect()
-                }
-
-                #[cfg(not(feature = "pretty"))]
-                {
-                    new_paths
-                        .iter()
-                        .par_bridge()
-                        .map(|path| {
-                            let time_ns = path_to_timestamp(path);
-                            let img = ImageReader::open(path).unwrap().decode().unwrap();
-                            #[cfg(feature = "rerun")]
-                            if let Some(recording) = recording_option {
-                                recording.set_time_nanos("stable", time_ns);
-                                let topic = format!("/cam{}", cam_idx);
-                                log_image_as_compressed(
-                                    recording,
-                                    &topic,
-                                    &img,
-                                    image::ImageFormat::Jpeg,
-                                );
-                            };
-                            (
-                                time_ns,
-                                image_to_option_feature_frame(
-                                    tag_detector,
-                                    &img,
-                                    board,
-                                    MIN_CORNERS,
-                                    time_ns,
-                                ),
-                            )
-                        })
-                        .collect()
-                }
             };
 
             time_frame.sort_by(|a, b| a.0.cmp(&b.0));
@@ -192,73 +156,35 @@ pub fn load_others(
                 .step_by(step)
                 .enumerate()
                 .collect();
-            let mut time_frame: Vec<_> = {
-                #[cfg(feature = "pretty")]
-                {
-                    new_paths
-                        .iter()
-                        .par_bridge()
-                        .progress_count(new_paths.len() as u64)
-                        .map(|(idx, path)| {
-                            let time_ns = *idx as i64 * 100000000;
-                            let img = ImageReader::open(path).unwrap().decode().unwrap();
-                            #[cfg(feature = "rerun")]
-                            if let Some(recording) = recording_option {
-                                recording.set_time_nanos("stable", time_ns);
-                                let topic = format!("/cam{}", cam_idx);
-                                log_image_as_compressed(
-                                    recording,
-                                    &topic,
-                                    &img,
-                                    image::ImageFormat::Jpeg,
-                                );
-                            };
-                            (
-                                time_ns,
-                                image_to_option_feature_frame(
-                                    tag_detector,
-                                    &img,
-                                    board,
-                                    MIN_CORNERS,
-                                    time_ns,
-                                ),
-                            )
-                        })
-                        .collect()
-                }
-                #[cfg(not(feature = "pretty"))]
-                {
-                    new_paths
-                        .iter()
-                        .par_bridge()
-                        .map(|(idx, path)| {
-                            let time_ns = *idx as i64 * 100000000;
-                            let img = ImageReader::open(path).unwrap().decode().unwrap();
-                            #[cfg(feature = "rerun")]
-                            if let Some(recording) = recording_option {
-                                recording.set_time_nanos("stable", time_ns);
-                                let topic = format!("/cam{}", cam_idx);
-                                log_image_as_compressed(
-                                    recording,
-                                    &topic,
-                                    &img,
-                                    image::ImageFormat::Jpeg,
-                                );
-                            };
-                            (
-                                time_ns,
-                                image_to_option_feature_frame(
-                                    tag_detector,
-                                    &img,
-                                    board,
-                                    MIN_CORNERS,
-                                    time_ns,
-                                ),
-                            )
-                        })
-                        .collect()
-                }
-            };
+
+            let mut time_frame: Vec<_> = new_paths
+                .iter()
+                .par_bridge()
+                //.progress_count(new_paths.len() as u64)
+                .map(|(idx, path)| {
+                    let time_ns = *idx as i64 * 100000000;
+                    let img = ImageReader::open(path).unwrap().decode().unwrap();
+                    #[cfg(feature = "rerun")]
+                    if let Some(recording) = recording_option {
+                        recording.set_time(
+                            "stable",
+                            TimeCell::from_timestamp_nanos_since_epoch(time_ns),
+                        );
+                        let topic = format!("cam{}", cam_idx);
+                        log_image(recording, &topic, &img);
+                    };
+                    (
+                        time_ns,
+                        image_to_option_feature_frame(
+                            tag_detector,
+                            &img,
+                            board,
+                            MIN_CORNERS,
+                            time_ns,
+                        ),
+                    )
+                })
+                .collect();
             time_frame.sort_by(|a, b| a.0.cmp(&b.0));
             time_frame.iter().map(|f| f.1.clone()).collect()
         })

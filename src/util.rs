@@ -712,7 +712,10 @@ pub fn validation(
                         (p3p.x, p3p.y, p3p.z)
                     })
                     .collect();
-                recording.set_time_nanos("stable", f.time_ns);
+                recording.set_time(
+                    "stable",
+                    rerun::TimeCell::from_timestamp_nanos_since_epoch(f.time_ns),
+                );
                 recording
                     .log(
                         format!("/cam{}/board", cam_idx),
@@ -763,7 +766,10 @@ pub fn validation(
                     ((c.r, c.g, c.b, 255), format!("{}", r))
                 })
                 .unzip();
-            recording.set_time_nanos("stable", *time_ns);
+            recording.set_time(
+                "stable",
+                rerun::TimeCell::from_timestamp_nanos_since_epoch(*time_ns),
+            );
             recording
                 .log(
                     topic.to_string(),
@@ -849,7 +855,10 @@ pub fn init_and_calibrate_one_camera(
         #[cfg(feature = "rerun")]
         key_frames.iter().enumerate().for_each(|(i, k)| {
             let topic = format!("/cam{}/keyframe{}", cam_idx, i);
-            recording.set_time_nanos("stable", k.clone().unwrap().time_ns);
+            recording.set_time(
+                "stable",
+                rerun::TimeCell::from_timestamp_nanos_since_epoch(k.clone().unwrap().time_ns),
+            );
             recording
                 .log(topic, &rerun::TextLog::new("keyframe"))
                 .unwrap();
