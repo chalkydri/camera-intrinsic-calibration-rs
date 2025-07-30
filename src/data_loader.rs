@@ -62,6 +62,17 @@ pub fn image_to_option_feature_frame(
     }
 }
 
+fn img_filter(rp: glob::GlobResult) -> Option<std::path::PathBuf> {
+    if let Ok(p) = rp {
+        for ext in &[".png", ".jpg"] {
+            if p.as_os_str().to_string_lossy().ends_with(ext) {
+                return Some(p);
+            }
+        }
+    }
+    None
+}
+
 pub fn load_euroc(
     root_folder: &str,
     tag_detector: &TagDetector,
@@ -74,11 +85,12 @@ pub fn load_euroc(
     (0..cam_num)
         .map(|cam_idx| {
             log::trace!("loading cam{}", cam_idx);
-            let img_paths =
-                glob(format!("{}/mav0/cam{}/data/*.png", root_folder, cam_idx).as_str())
-                    .expect("failed");
-            let mut sorted_path: Vec<_> = img_paths.collect();
-            sorted_path.sort_by(|a, b| a.as_ref().unwrap().cmp(b.as_ref().unwrap()));
+            let img_paths = glob(format!("{}/mav0/cam{}/data/*", root_folder, cam_idx).as_str())
+                .expect("failed");
+            let mut sorted_path: Vec<std::path::PathBuf> =
+                img_paths.into_iter().filter_map(img_filter).collect();
+
+            sorted_path.sort();
             let new_paths: Vec<_> = sorted_path.iter().skip(start_idx).step_by(step).collect();
 
             let mut time_frame: Vec<_> = {
@@ -89,7 +101,6 @@ pub fn load_euroc(
                         .par_bridge()
                         .progress_count(new_paths.len() as u64)
                         .map(|path| {
-                            let path = path.as_ref().unwrap();
                             let time_ns = path_to_timestamp(path);
                             let img = ImageReader::open(path).unwrap().decode().unwrap();
                             #[cfg(feature = "rerun")]
@@ -123,7 +134,6 @@ pub fn load_euroc(
                         .iter()
                         .par_bridge()
                         .map(|path| {
-                            let path = path.as_ref().unwrap();
                             let time_ns = path_to_timestamp(path);
                             let img = ImageReader::open(path).unwrap().decode().unwrap();
                             #[cfg(feature = "rerun")]
@@ -169,11 +179,13 @@ pub fn load_others(
 ) -> Vec<Vec<Option<FrameFeature>>> {
     (0..cam_num)
         .map(|cam_idx| {
-            let img_paths = glob(format!("{}/**/cam{}/**/*.png", root_folder, cam_idx).as_str())
-                .expect("failed");
+            let img_paths =
+                glob(format!("{}/**/cam{}/**/*", root_folder, cam_idx).as_str()).expect("failed");
             log::trace!("loading cam{}", cam_idx);
-            let mut sorted_path: Vec<_> = img_paths.collect();
-            sorted_path.sort_by(|a, b| a.as_ref().unwrap().cmp(b.as_ref().unwrap()));
+            let mut sorted_path: Vec<std::path::PathBuf> =
+                img_paths.into_iter().filter_map(img_filter).collect();
+
+            sorted_path.sort();
             let new_paths: Vec<_> = sorted_path
                 .iter()
                 .skip(start_idx)
@@ -188,7 +200,6 @@ pub fn load_others(
                         .par_bridge()
                         .progress_count(new_paths.len() as u64)
                         .map(|(idx, path)| {
-                            let path = path.as_ref().unwrap();
                             let time_ns = *idx as i64 * 100000000;
                             let img = ImageReader::open(path).unwrap().decode().unwrap();
                             #[cfg(feature = "rerun")]
@@ -221,7 +232,6 @@ pub fn load_others(
                         .iter()
                         .par_bridge()
                         .map(|(idx, path)| {
-                            let path = path.as_ref().unwrap();
                             let time_ns = *idx as i64 * 100000000;
                             let img = ImageReader::open(path).unwrap().decode().unwrap();
                             #[cfg(feature = "rerun")]

@@ -1,8 +1,4 @@
-use std::ops::Mul;
-
 use faer::linalg::solvers::SolveLstsqCore;
-use faer::sparse::linalg::solvers::Qr;
-use faer::{prelude::*, Conj};
 use log::debug;
 use nalgebra as na;
 use rand::seq::SliceRandom;
@@ -17,14 +13,14 @@ fn h6_l1l2_solver(six_pt_pairs: &[(glam::Vec2, glam::Vec2)]) -> Option<(f32, na:
         let x_p = pt1.x;
         let y_p = pt1.y;
         unsafe {
-            *m1.get_mut(r, 0) = -x * y_p;
-            *m1.get_mut(r, 1) = -y * y_p;
-            *m1.get_mut(r, 2) = -y_p;
-            *m1.get_mut(r, 3) = x * x_p;
-            *m1.get_mut(r, 4) = x_p * y;
-            *m1.get_mut(r, 5) = x_p;
-            *m1.get_mut(r, 6) = -x * x * y_p - y * y * y_p;
-            *m1.get_mut(r, 7) = x * x * x_p + x_p * y * y;
+            *m1.get_mut_unchecked(r, 0) = -x * y_p;
+            *m1.get_mut_unchecked(r, 1) = -y * y_p;
+            *m1.get_mut_unchecked(r, 2) = -y_p;
+            *m1.get_mut_unchecked(r, 3) = x * x_p;
+            *m1.get_mut_unchecked(r, 4) = x_p * y;
+            *m1.get_mut_unchecked(r, 5) = x_p;
+            *m1.get_mut_unchecked(r, 6) = -x * x * y_p - y * y * y_p;
+            *m1.get_mut_unchecked(r, 7) = x * x * x_p + x_p * y * y;
         }
     }
     // let q_mat = mm1.transpose().qr().q();
@@ -66,7 +62,7 @@ fn h6_l1l2_solver(six_pt_pairs: &[(glam::Vec2, glam::Vec2)]) -> Option<(f32, na:
     for which_gamma in 0..2 {
         let gamma = g_result[which_gamma];
         let l = -(gamma * n06 + n16) / (-gamma * n02 - n12);
-        let v1 = gamma as f64 * n.row(0) + n.row(1).to_owned();
+        let v1 = faer::Scale(gamma) * n.row(0) + n.row(1);
         temp_h[which_gamma][(0, 0)] = *v1.get(0);
         temp_h[which_gamma][(0, 1)] = *v1.get(1);
         temp_h[which_gamma][(0, 2)] = *v1.get(2);
@@ -106,16 +102,15 @@ fn h6_l1l2_solver(six_pt_pairs: &[(glam::Vec2, glam::Vec2)]) -> Option<(f32, na:
             }
         }
         // std::cout << "svd\n";
-        let eq10x = eq10a
+        let mut eq10x = eq10b;
+        eq10a
             .qr()
-            .solve_lstsq_in_place_with_conj(Conj::No, eq10b.as_mut());
-        // Eigen::JacobiSVD<Eigen::Matrix<float, 6, 4>> svd(
-        //     eq10A, Eigen::ComputeFullU | Eigen::ComputeFullV);
-        // Eigen::Matrix<float, 4, 1> eq10x = svd.solve(eq10b);
-        temp_h[which_gamma][(2, 0)] = *eq10a.get(0, 0);
-        temp_h[which_gamma][(2, 1)] = *eq10a.get(1, 0);
-        temp_h[which_gamma][(2, 2)] = *eq10a.get(2, 0);
-        let l_p = *eq10a.get(3, 0);
+            .solve_lstsq_in_place_with_conj(faer::Conj::No, eq10x.as_mut());
+
+        temp_h[which_gamma][(2, 0)] = *eq10x.get(0, 0);
+        temp_h[which_gamma][(2, 1)] = *eq10x.get(1, 0);
+        temp_h[which_gamma][(2, 2)] = *eq10x.get(2, 0);
+        let l_p = *eq10x.get(3, 0);
         l_l_p[(which_gamma, 0)] = l;
         l_l_p[(which_gamma, 1)] = l_p;
     }
@@ -209,7 +204,7 @@ pub fn radial_distortion_homography(
         })
         .collect();
     let ransac_times = 1000;
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
 
     let mut best_lambda = 0.0;
     let mut best_homography_mat = na::Matrix3::zeros();
