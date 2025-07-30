@@ -15,15 +15,15 @@ use nalgebra as na;
 use rand::seq::SliceRandom;
 #[cfg(feature = "rerun")]
 use rerun::RecordingStream;
-use tiny_solver::loss_functions::HuberLoss;
 use tiny_solver::Optimizer;
+use tiny_solver::loss_functions::HuberLoss;
 
 pub fn rtvec_to_na_dvec(
     rtvec: ((f64, f64, f64), (f64, f64, f64)),
 ) -> (na::DVector<f64>, na::DVector<f64>) {
     (
-        na::dvector![rtvec.0 .0, rtvec.0 .1, rtvec.0 .2],
-        na::dvector![rtvec.1 .0, rtvec.1 .1, rtvec.1 .2],
+        na::dvector![rtvec.0.0, rtvec.0.1, rtvec.0.2],
+        na::dvector![rtvec.1.0, rtvec.1.1, rtvec.1.2],
     )
 }
 
@@ -323,36 +323,36 @@ pub fn init_ucm(
     // optimize
     init_focal_alpha_problem.set_variable_bounds("params", 0, init_f / 3.0, init_f * 3.0);
     init_focal_alpha_problem.set_variable_bounds("params", 1, 1e-6, 1.0);
-    match optimizer.optimize(&init_focal_alpha_problem, &initial_values, None)
-    { Some(mut second_round_values) => {
-        println!(
-            "params after {:?}\n",
-            second_round_values.get("params").unwrap()
-        );
+    match optimizer.optimize(&init_focal_alpha_problem, &initial_values, None) {
+        Some(mut second_round_values) => {
+            println!(
+                "params after {:?}\n",
+                second_round_values.get("params").unwrap()
+            );
 
-        let focal = second_round_values["params"][0];
-        let alpha = second_round_values["params"][1];
-        let ucm_all_params = na::dvector![focal, focal, half_w, half_h, alpha];
-        let ucm_camera = GenericModel::UCM(UCM::new(
-            &ucm_all_params,
-            frame_feature0.img_w_h.0,
-            frame_feature0.img_w_h.1,
-        ));
-        second_round_values.remove("params");
-        Some(
-            calib_camera(
-                &[Some(frame_feature0.clone()), Some(frame_feature1.clone())],
-                &ucm_camera,
-                true,
-                0,
-                fixed_focal,
+            let focal = second_round_values["params"][0];
+            let alpha = second_round_values["params"][1];
+            let ucm_all_params = na::dvector![focal, focal, half_w, half_h, alpha];
+            let ucm_camera = GenericModel::UCM(UCM::new(
+                &ucm_all_params,
+                frame_feature0.img_w_h.0,
+                frame_feature0.img_w_h.1,
+            ));
+            second_round_values.remove("params");
+            Some(
+                calib_camera(
+                    &[Some(frame_feature0.clone()), Some(frame_feature1.clone())],
+                    &ucm_camera,
+                    true,
+                    0,
+                    fixed_focal,
+                )
+                .expect("The initial UCM model fitting failed. Might be wrong board configuration.")
+                .0,
             )
-            .expect("The initial UCM model fitting failed. Might be wrong board configuration.")
-            .0,
-        )
-    } _ => {
-        None
-    }}
+        }
+        _ => None,
+    }
 }
 
 pub fn calib_camera(
@@ -399,8 +399,9 @@ pub fn calib_camera(
                 })
                 .unzip();
             valid_indexes.push(i);
-            let (rvec, tvec) =
-                rtvec_to_na_dvec(sqpnp_simple::sqpnp_solve_glam(p3ds.as_slice(), p2ds_z.as_slice()).unwrap());
+            let (rvec, tvec) = rtvec_to_na_dvec(
+                sqpnp_simple::sqpnp_solve_glam(p3ds.as_slice(), p2ds_z.as_slice()).unwrap(),
+            );
 
             initial_values.entry(rvec_name).or_insert(rvec);
             initial_values.entry(tvec_name).or_insert(tvec);

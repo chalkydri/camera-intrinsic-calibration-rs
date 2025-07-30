@@ -1,8 +1,8 @@
-use aprilgrid::detector::TagDetector;
 use aprilgrid::TagFamily;
+use aprilgrid::detector::TagDetector;
 use camera_intrinsic_calibration::board::Board;
 use camera_intrinsic_calibration::board::{
-    board_config_from_json, board_config_to_json, BoardConfig,
+    BoardConfig, board_config_from_json, board_config_to_json,
 };
 use camera_intrinsic_calibration::data_loader::{load_euroc, load_others};
 use camera_intrinsic_calibration::detected_points::FrameFeature;
